@@ -40,7 +40,7 @@ const BlogPostCard: React.FC<{
 }> = ({ post, index, onDelete }) => {
   return (
     <div 
-      className="bg-white p-6 rounded-lg shadow-lg relative transform transition-all duration-500 hover:scale-[1.02] hover:shadow-xl animate-fadeInUp"
+      className="bg-white p-8 rounded-xl shadow-lg relative transform transition-all duration-500 hover:scale-[1.02] hover:shadow-xl animate-fadeInUp border border-gray-100"
       style={{
         animationDelay: `${index * 0.2}s`,
         borderLeft: '4px solid #3B82F6',
@@ -48,17 +48,16 @@ const BlogPostCard: React.FC<{
     >
       <button
         onClick={() => onDelete(post.id!)}
-        className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors duration-200"
+        className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors duration-200 bg-gray-50 hover:bg-gray-100 p-2 rounded-full"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-800">{post.title}</h2>
-        <span className="text-sm text-gray-500">{formatDate(post.createdAt)}</span>
+      <div className="flex justify-between items-center mb-6">
+        <span className="text-sm text-gray-500 font-medium">{formatDate(post.createdAt)}</span>
       </div>
-      <div className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl">
+      <div className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none text-gray-700 leading-relaxed">
         <TypewriterText text={post.content} delay={index * 0.2} />
       </div>
     </div>
@@ -122,9 +121,6 @@ const MessageBoard: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center animate-fadeIn">
-                Blog Posts
-            </h1>
             <div className="space-y-6">
                 {posts.length === 0 ? (
                     <p className="text-center text-gray-600 animate-fadeIn">No blog posts yet. Be the first to write one!</p>

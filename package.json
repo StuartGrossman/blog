@@ -12,8 +12,10 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run start:server\""
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "firebase": "^11.6.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.5.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

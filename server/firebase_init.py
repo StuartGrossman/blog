@@ -1,9 +1,12 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-from firebase_config import FIREBASE_CONFIG
+import os
 
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate(FIREBASE_CONFIG)
+# Get the absolute path to the service account file
+service_account_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'blog-feff1-firebase-adminsdk-fbsvc-581ceb2365.json')
+
+# Initialize Firebase Admin SDK with the service account file
+cred = credentials.Certificate(service_account_path)
 firebase_admin.initialize_app(cred)
 
 # Get Firestore instance

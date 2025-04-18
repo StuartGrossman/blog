@@ -1,48 +1,100 @@
-import { db } from '../config/firebase';
-import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
-export interface Message {
-    id?: string;
-    text: string;
-    timestamp: Date;
+export interface BlogPost {
+  id?: string;
+  title: string;
+  content: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-export const saveMessage = async (message: Message): Promise<void> => {
-    try {
-        await addDoc(collection(db, 'test'), {
-            text: message.text,
-            timestamp: message.timestamp
-        });
-    } catch (error) {
-        console.error('Error saving message:', error);
-        throw new Error('Failed to save message');
-    }
-};
-
-export const getMessages = async (): Promise<Message[]> => {
-    try {
-        const messagesQuery = query(collection(db, 'test'), orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(messagesQuery);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as Message[];
-    } catch (error) {
-        console.error('Error getting messages:', error);
-        throw new Error('Failed to get messages');
-    }
-};
-
-export const subscribeToMessages = (callback: (messages: Message[]) => void): (() => void) => {
-    const messagesQuery = query(collection(db, 'test'), orderBy('timestamp', 'desc'));
-    
-    return onSnapshot(messagesQuery, (snapshot) => {
-        const messages = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as Message[];
-        callback(messages);
-    }, (error) => {
-        console.error('Error subscribing to messages:', error);
+// Save a new blog post
+export const saveBlogPost = async (post: Omit<BlogPost, 'createdAt' | 'updatedAt'>) => {
+  try {
+    const response = await fetch('http://localhost:8000/api/posts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: post.title,
+        content: post.content,
+        password: localStorage.getItem('auth_token')
+      }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to save blog post');
+    }
+
+    const data = await response.json();
+    return { ...post, id: data.id, createdAt: Timestamp.now(), updatedAt: Timestamp.now() };
+  } catch (error) {
+    console.error('Error saving blog post:', error);
+    throw error;
+  }
+};
+
+// Get all blog posts
+export const getBlogPosts = async () => {
+  try {
+    const response = await fetch('http://localhost:8000/api/posts');
+    if (!response.ok) {
+      throw new Error('Failed to fetch blog posts');
+    }
+    const posts = await response.json();
+    return posts.map((post: any) => ({
+      ...post,
+      createdAt: Timestamp.fromDate(new Date(post.timestamp)),
+      updatedAt: Timestamp.fromDate(new Date(post.timestamp))
+    })) as BlogPost[];
+  } catch (error) {
+    console.error('Error getting blog posts:', error);
+    throw error;
+  }
+};
+
+// Subscribe to blog posts updates
+export const subscribeToBlogPosts = (
+  onUpdate: (posts: BlogPost[]) => void,
+  onError: (error: Error) => void
+) => {
+  // For now, we'll poll the server every 5 seconds
+  const interval = setInterval(async () => {
+    try {
+      const posts = await getBlogPosts();
+      onUpdate(posts);
+    } catch (error) {
+      onError(error as Error);
+    }
+  }, 5000);
+
+  // Return cleanup function
+  return () => clearInterval(interval);
+};
+
+// Delete a blog post
+export const deleteBlogPost = async (postId: string) => {
+  try {
+    const response = await fetch(`http://localhost:8000/api/posts/${postId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        password: localStorage.getItem('auth_token')
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to delete blog post');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting blog post:', error);
+    throw error;
+  }
 }; 

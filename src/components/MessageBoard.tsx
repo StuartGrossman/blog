@@ -1,124 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import { saveMessage, getMessages, subscribeToMessages, Message } from '../services/firebaseService';
+import React, { useEffect, useState } from 'react';
+import { BlogPost, getBlogPosts, subscribeToBlogPosts } from '../services/firebaseService';
+import DeleteModal from './DeleteModal';
+import '../styles/animations.css';
+
+const TypewriterText: React.FC<{ text: string; delay?: number }> = ({ text, delay = 0 }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, 10); // Reduced from 30ms to 10ms for faster typing
+
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, text]);
+
+  return <span className="font-mono whitespace-pre-wrap">{displayedText}</span>;
+};
+
+const formatDate = (timestamp: any) => {
+  if (!timestamp) return '';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const BlogPostCard: React.FC<{ 
+  post: BlogPost; 
+  index: number;
+  onDelete: (id: string) => void;
+}> = ({ post, index, onDelete }) => {
+  return (
+    <div 
+      className="bg-white p-6 rounded-lg shadow-lg relative transform transition-all duration-500 hover:scale-[1.02] hover:shadow-xl animate-fadeInUp"
+      style={{
+        animationDelay: `${index * 0.2}s`,
+        borderLeft: '4px solid #3B82F6',
+      }}
+    >
+      <button
+        onClick={() => onDelete(post.id!)}
+        className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors duration-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold text-gray-800">{post.title}</h2>
+        <span className="text-sm text-gray-500">{formatDate(post.createdAt)}</span>
+      </div>
+      <div className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl">
+        <TypewriterText text={post.content} delay={index * 0.2} />
+      </div>
+    </div>
+  );
+};
 
 const MessageBoard: React.FC = () => {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState('');
+    const [posts, setPosts] = useState<BlogPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isOffline, setIsOffline] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedPostId, setSelectedPostId] = useState<string>('');
 
-    useEffect(() => {
-        // Check online status
-        const handleOnline = () => setIsOffline(false);
-        const handleOffline = () => setIsOffline(true);
-        
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        setIsOffline(!navigator.onLine);
-
-        // Load initial messages
-        const loadMessages = async () => {
-            try {
-                const initialMessages = await getMessages();
-                setMessages(initialMessages);
-                setError(null);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load messages');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadMessages();
-
-        // Subscribe to real-time updates
-        const unsubscribe = subscribeToMessages((updatedMessages) => {
-            setMessages(updatedMessages);
-            setError(null);
-        });
-
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-            unsubscribe();
-        };
-    }, []);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newMessage.trim()) return;
-
+    const loadPosts = async () => {
         try {
             setLoading(true);
-            await saveMessage({
-                content: newMessage,
-                timestamp: new Date().toISOString()
-            });
-            setNewMessage('');
+            const fetchedPosts = await getBlogPosts();
+            setPosts(fetchedPosts);
             setError(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save message');
+        } catch (error) {
+            setError('Failed to load posts');
+            console.error('Error loading posts:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading && messages.length === 0) {
+    useEffect(() => {
+        loadPosts();
+        const unsubscribe = subscribeToBlogPosts(
+            (updatedPosts) => setPosts(updatedPosts),
+            (error) => console.error('Error subscribing to posts:', error)
+        );
+        return () => unsubscribe();
+    }, []);
+
+    const handleDeleteClick = (postId: string) => {
+        setSelectedPostId(postId);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDeleteSuccess = () => {
+        loadPosts();
+    };
+
+    if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center text-red-500 p-4">
+                {error}
             </div>
         );
     }
 
     return (
-        <div className="max-w-2xl mx-auto p-4">
-            {isOffline && (
-                <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
-                    <p>You are offline. Messages will be synced when you reconnect.</p>
-                </div>
-            )}
-            
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                    <p>{error}</p>
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="mb-6">
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={loading || isOffline}
-                    />
-                    <button
-                        type="submit"
-                        disabled={loading || isOffline || !newMessage.trim()}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? 'Sending...' : 'Send'}
-                    </button>
-                </div>
-            </form>
-
-            <div className="space-y-4">
-                {messages.map((message) => (
-                    <div
-                        key={message.id}
-                        className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-                    >
-                        <p className="text-gray-800">{message.content}</p>
-                        <p className="text-sm text-gray-500 mt-2">
-                            {new Date(message.timestamp).toLocaleString()}
-                        </p>
-                    </div>
-                ))}
+        <div className="max-w-4xl mx-auto px-4 py-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center animate-fadeIn">
+                Blog Posts
+            </h1>
+            <div className="space-y-6">
+                {posts.length === 0 ? (
+                    <p className="text-center text-gray-600 animate-fadeIn">No blog posts yet. Be the first to write one!</p>
+                ) : (
+                    posts.map((post, index) => (
+                        <BlogPostCard 
+                            key={post.id} 
+                            post={post} 
+                            index={index}
+                            onDelete={handleDeleteClick}
+                        />
+                    ))
+                )}
             </div>
+
+            <DeleteModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                postId={selectedPostId}
+                onDelete={handleDeleteSuccess}
+            />
         </div>
     );
 };

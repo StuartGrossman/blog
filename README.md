@@ -1,26 +1,20 @@
-# Blog Application
+# Blog
 
-A modern blog application built with React, FastAPI, and Firebase.
+A modern blog application built with TypeScript, React, and Firebase.
 
 ## Features
 
-- Real-time messaging
-- Password-protected content
+- Create and manage blog posts
+- Real-time updates
+- Firebase authentication
 - Responsive design
-- Firebase integration for data storage
 
 ## Tech Stack
 
-- Frontend:
-  - React
-  - TypeScript
-  - Tailwind CSS
-  - Firebase SDK
-
-- Backend:
-  - FastAPI
-  - Python
-  - Firebase Admin SDK
+- TypeScript
+- React
+- Firebase (Authentication, Firestore, Hosting)
+- Vite
 
 ## Getting Started
 

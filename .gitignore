@@ -36,3 +36,6 @@ yarn-error.log*
 # Firebase
 .firebase/
 firebase-debug.log
+
+# Firebase service account
+blog-feff1-firebase-adminsdk-fbsvc-581ceb2365.json
